@@ -6,6 +6,7 @@ import { useToastStore } from '@/stores/toastStore'
 import { cn } from '@/lib/utils'
 import { become, jumpTo, lagosDay, lagosMinutes, resetDemo, thisFriday } from './control'
 import { AMAKA, BISI, NGOZI, PEOPLE, PERSONAS, type Person } from './people'
+import { asOwner } from './engine'
 import { giveTask, inviteMe, knockOn } from './sim'
 
 /**
@@ -13,6 +14,32 @@ import { giveTask, inviteMe, knockOn } from './sim'
  * exactly as it is. Be anyone, move the clock, make something happen, or follow the
  * tour. Collapses to a small pill; press Shift+D to hide it altogether.
  */
+/** The codes of the rooms in use, for the presenter alone. Nobody in the office can read these from outside a room. */
+function RoomCodes() {
+  const [codes, setCodes] = useState<{ name: string; code: string }[]>([])
+  useEffect(() => {
+    const read = () =>
+      void asOwner(async (tx) => (await tx.query<{ name: string; code: string }>(`select r.name, c.code from public.office_room_codes c join public.office_rooms r on r.id = c.room_id order by r.name`)).rows).then(setCodes)
+    read()
+    const t = setInterval(read, 3000)
+    return () => clearInterval(t)
+  }, [])
+  if (!codes.length) return null
+  return (
+    <section>
+      <h2 className={section}>Room codes (only you see these)</h2>
+      <ul className="mt-1.5 space-y-1 text-[13px]">
+        {codes.map((c) => (
+          <li key={c.name} className="flex justify-between gap-3">
+            <span className="text-text-secondary">{c.name}</span>
+            <span className="tnum font-bold tracking-[0.1em] text-text-primary">{c.code}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 const TIMES: { label: string; minutes: number; note: string; friday?: boolean }[] = [
   { label: '09:15', minutes: 555, note: 'Sign-in opens' },
   { label: '11:05', minutes: 665, note: 'Sign-in closed, flags' },
@@ -40,7 +67,7 @@ const TOUR: Stop[] = [
   { title: 'New: Insights', say: 'The month added up for leadership, in plain words, with every figure traceable to the records.', person: NGOZI, route: '/insights' },
   { title: 'New: Notices', say: 'Post something the whole team must read, and see exactly who has. Post one and watch the count climb.', person: NGOZI, route: '/notices' },
   { title: 'New: Time off', say: 'Ask, decide, done. Approval pauses that person’s reports and shows on their door, so nobody enters anything twice.', person: BISI, route: '/time-off' },
-  { title: 'New: Rooms', say: 'Book a room with no double bookings. Step into the Focus room: you read the conversation so far and join in. Only people inside can read it, not even the CEO, and it is deleted when the last person leaves. Invite a colleague and they get a pop-up and an email.', person: AMAKA, route: '/rooms' },
+  { title: 'New: Rooms', say: 'Book a room with no double bookings. A room in use has a code on the door: step into the Focus room with the code from these controls. You read the conversation so far and join in. Only people inside can read it, not even the CEO, and it is deleted when the last person leaves. Invite a colleague and they get a pop-up and an email, and need no code.', person: AMAKA, route: '/rooms' },
   { title: 'New: Team chat', say: 'Open channels for the whole team, next to the private knock chats. Post in Wins and someone will answer.', person: AMAKA, route: '/chat' },
   { title: 'The day closes', say: 'Jump to the evening. Anyone who missed a report is flagged, HR gets the summary, and the Email log shows every email that would have gone out.', person: BISI, route: '/email-log', minutes: 1150 },
 ]
@@ -274,6 +301,8 @@ export function DemoPanel() {
             </div>
           </section>
         ) : null}
+
+        <RoomCodes />
 
         <section className="hairline-t pt-3">
           {confirmReset ? (

@@ -78,6 +78,12 @@ type Listener =
   | { kind: 'presence'; cb: () => void }
   | { kind: 'changes'; event: string; table: string; filter?: { column: string; value: string }; cb: (p: unknown) => void }
 
+/**
+ * A listener hears that these changed, never what they say: a room's words and its code
+ * are for the people inside. Real Realtime applies RLS here; the screens only refetch anyway.
+ */
+const PRIVATE = new Set(['office_room_codes', 'office_room_messages', 'office_room_invites'])
+
 function matches(l: Extract<Listener, { kind: 'changes' }>, c: Change) {
   if (l.table !== c.tbl) return false
   if (l.event !== '*' && l.event !== c.op) return false
@@ -121,7 +127,10 @@ export class DemoChannel {
       for (const l of this.listeners) {
         if (l.kind !== 'changes') continue
         for (const c of m.rows) {
-          if (matches(l, c)) l.cb({ eventType: c.op, new: c.new ?? {}, old: c.old ?? {}, schema: 'public', table: c.tbl })
+          if (matches(l, c)) {
+            const hide = PRIVATE.has(c.tbl)
+            l.cb({ eventType: c.op, new: hide ? {} : (c.new ?? {}), old: hide ? {} : (c.old ?? {}), schema: 'public', table: c.tbl })
+          }
         }
       }
     })

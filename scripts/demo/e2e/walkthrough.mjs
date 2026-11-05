@@ -138,18 +138,54 @@ await step('a room is private: the CEO cannot read it from outside', second, asy
   })
   if (wrote !== '42501') throw new Error('wrote from outside: ' + wrote)
 })
+await step('a room in use: no way in without the code, and the code is not readable', second, async () => {
+  const r = await db(second, async () => {
+    const s = window.__supabase
+    const plain = await s.rpc('enter_room', { p_room: 'focus' })
+    const codes = await s.from('office_room_codes').select('code')
+    const direct = await s.from('office_room_occupants').insert({ user_id: (await s.auth.getUser()).data.user.id, room_id: 'focus' })
+    const place = await s.rpc('office_room_place', { p_room: 'focus' })
+    const tries = []
+    for (let i = 0; i < 6; i++) tries.push((await s.rpc('enter_room', { p_room: 'boardroom', p_code: '000000' })).data)
+    return { plain: plain.data, codes: codes.data?.length, direct: direct.error?.code, place: place.error?.code, tries }
+  })
+  if (r.plain !== 'needs_code') throw new Error('no code asked: ' + r.plain)
+  if (r.codes !== 0) throw new Error('read codes from outside')
+  if (!r.direct) throw new Error('walked in by writing the table')
+  if (!r.place) throw new Error('called the inside door directly')
+  if (r.tries.at(-1) !== 'locked' || r.tries[0] !== 'wrong_code') throw new Error('no lockout: ' + r.tries.join())
+})
 await step('door says who is in a room', second, async () => {
   await second.getByText('In the Focus room').first().waitFor({ timeout: 8000 })
 })
 await step('step in: read the conversation so far, join in, get an answer', second, async () => {
   await go(second, 'Rooms')
-  await second.getByRole('region', { name: 'Focus room' }).getByRole('button', { name: 'Step in' }).click()
+  const door = second.getByRole('region', { name: 'Focus room' })
+  await door.getByRole('button', { name: 'Step in with a code' }).click()
+  const box = door.getByLabel('Enter the room code')
+  await box.fill('111111'); await door.getByRole('button', { name: 'Enter', exact: true }).click()
+  await door.getByText('That code is not right').waitFor({ timeout: 5000 })
+  if (await second.getByRole('heading', { name: /You are in/ }).count()) throw new Error('let in on a wrong code')
+  await openPanel(second)
+  await panel(second).getByText('Room codes').waitFor({ timeout: 6000 })
+  const code = (await panel(second).getByRole('listitem').filter({ hasText: 'Focus room' }).innerText()).match(/\d{6}/)[0]
+  await closePanel(second)
+  await box.fill(code); await door.getByRole('button', { name: 'Enter', exact: true }).click()
+  await second.getByRole('heading', { name: 'You are in the Focus room' }).waitFor({ timeout: 6000 })
+  await second.getByText(code, { exact: true }).first().waitFor({ timeout: 5000 })
   const log = second.getByRole('log', { name: 'Conversation in the Focus room' })
   await log.getByText('41 failed payments').waitFor({ timeout: 8000 })
   await second.screenshot({ path: SHOTS + 'room-chat.png' })
+  await db(second, () => {
+    window.__heard = []
+    window.__supabase.channel('listen').on('postgres_changes', { event: '*', schema: 'public', table: 'office_room_messages' }, (p) => window.__heard.push(p)).subscribe()
+  })
   await second.getByLabel('Message the room').fill('Thanks both. What do you need from me?')
   await second.getByRole('button', { name: 'Send' }).click()
   await log.getByText('Thanks both.').waitFor({ timeout: 5000 })
+  const heard = await db(second, () => window.__heard)
+  if (!heard.length) throw new Error('listener heard nothing')
+  if (heard.some((p) => p.new.body || p.old.body)) throw new Error('a listener was handed the words of a room')
   await log.getByText(/Good point|Agreed\.|makes sense|report back|send the details/).first().waitFor({ timeout: 12000 })
 })
 await step('invite amaka: pop-up, email, join, and she reads back', second, async () => {
@@ -176,7 +212,7 @@ await step('a room empties and its words go', second, async () => {
   await go(second, 'Rooms')
   await second.getByRole('button', { name: 'Step out' }).first().click()
   await second.getByRole('heading', { name: /You are in/ }).waitFor({ state: 'hidden', timeout: 5000 })
-  await second.getByRole('region', { name: 'Corner room' }).getByRole('button', { name: 'Step in' }).click()
+  await second.getByRole('region', { name: 'Corner room' }).getByRole('button', { name: 'Step in', exact: true }).click()
   await second.getByRole('heading', { name: 'You are in the Corner room' }).waitFor({ timeout: 5000 })
   await second.getByLabel('Message the room').fill('A private thought')
   await second.getByRole('button', { name: 'Send' }).click()
@@ -184,7 +220,7 @@ await step('a room empties and its words go', second, async () => {
   await log.getByText('A private thought').waitFor({ timeout: 5000 })
   await second.getByRole('button', { name: 'Step out' }).first().click()
   await second.waitForTimeout(800)
-  await second.getByRole('region', { name: 'Corner room' }).getByRole('button', { name: 'Step in' }).click()
+  await second.getByRole('region', { name: 'Corner room' }).getByRole('button', { name: 'Step in', exact: true }).click()
   await second.getByText('Nothing said yet').waitFor({ timeout: 5000 })
   await second.getByRole('button', { name: 'Step out' }).first().click()
   await second.waitForTimeout(500)
@@ -195,7 +231,7 @@ await step('a room empties and its words go', second, async () => {
 await step('nobody on leave can be invited; a lapsed room drops its invites', second, async () => {
   const r = await db(second, async () => {
     const s = window.__supabase
-    await s.rpc('enter_room', { p_room: 'boardroom' })
+    await s.rpc('enter_room', { p_room: 'corner' })
     const kemi = 'a0000000-0000-4000-8000-000000000007', bisi = 'a0000000-0000-4000-8000-000000000003'
     const away = await s.rpc('invite_to_room', { p_to: kemi })
     const made = await s.rpc('invite_to_room', { p_to: bisi })

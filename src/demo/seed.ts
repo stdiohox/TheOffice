@@ -50,7 +50,7 @@ async function bulk(tx: Tx, table: string, rows: Record<string, unknown>[]) {
 
 export async function wipe(tx: Tx) {
   await tx.exec(`
-    truncate public.office_channel_messages, public.office_room_invites, public.office_room_messages, public.office_room_occupants, public.office_bookings,
+    truncate public.office_channel_messages, public.office_room_code_tries, public.office_room_codes, public.office_room_invites, public.office_room_messages, public.office_room_occupants, public.office_bookings,
       public.office_leave_requests, public.office_notice_reads, public.office_notices,
       public.office_task_events, public.office_task_files, public.office_tasks,
       public.office_chat_messages, public.office_knocks, public.office_checkins, public.office_activity_state,
@@ -240,6 +240,7 @@ async function write(tx: Tx, today: string, minutesNow: number) {
     { user_id: ZAINAB.id, room_id: 'focus', joined_at: slot(minutesNow - 15) },
     { user_id: DAYO.id, room_id: 'focus', joined_at: slot(minutesNow - 12) },
   ])
+  await bulk(tx, 'public.office_room_codes', [{ room_id: 'focus', code: '482913' }])
   await bulk(tx, 'public.office_room_messages', [
     { room_id: 'focus', sender: ZAINAB.id, body: 'Thanks for joining. The timeout only happens when a card payment takes over 30 seconds.', created_at: slot(minutesNow - 13) },
     { room_id: 'focus', sender: DAYO.id, body: 'That matches the numbers. 41 failed payments last week, nearly all between 2pm and 4pm.', created_at: slot(minutesNow - 10) },

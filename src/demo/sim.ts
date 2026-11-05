@@ -259,6 +259,12 @@ function postInRoom(room: string, p: Person, body: string) {
   return asOwner((tx) => tx.query(`insert into public.office_room_messages (room_id, sender, body) values ($1, $2, $3)`, [room, p.id, body]))
 }
 
+/** The team know the code to a room they use, and go through the same door as anyone. */
+async function walkIn(p: Person, room: string) {
+  const code = await asOwner(async (tx) => (await tx.query<{ code: string }>(`select code from public.office_room_codes where room_id = $1`, [room])).rows[0]?.code)
+  await rpc(p, 'enter_room', { p_room: room, p_code: code ?? null })
+}
+
 /** Two of the team talking in a room, or a room where they already are. */
 async function aRoomInUse(me: string): Promise<{ room: string; person: Person }> {
   const rows = await asOwner(async (tx) => (await tx.query<{ user_id: string; room_id: string }>(`select user_id, room_id from public.office_room_occupants`)).rows)
@@ -268,8 +274,8 @@ async function aRoomInUse(me: string): Promise<{ room: string; person: Person }>
   if (there?.person) return { room: there.room, person: there.person }
   const room = mine === 'focus' ? 'boardroom' : 'focus'
   const [a, b] = PEOPLE.filter((p) => p !== NGOZI && free(p) && !LATE_STARTERS.includes(p) && p.id !== me).sort(() => Math.random() - 0.5)
-  await rpc(a, 'enter_room', { p_room: room })
-  await rpc(b, 'enter_room', { p_room: room })
+  await walkIn(a, room)
+  await walkIn(b, room)
   await postInRoom(room, a, 'Shall we go through the plan for next week?')
   await postInRoom(room, b, 'Yes. I have the numbers here.')
   return { room, person: a }

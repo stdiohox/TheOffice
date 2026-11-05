@@ -4,7 +4,7 @@ import { Button, FieldError, Skeleton } from '@/components/ui/primitives'
 import { Photo } from '@/components/ui/Photo'
 import { useOfficeMembers, useOfficeSettings } from '@/hooks/useOffice'
 import { useNow } from '@/hooks/useNow'
-import { useEnterRoom, useInviteToRoom, useOccupants, usePostRoomMessage, useRoomInvites, useRoomMessages, type Room } from '@/hooks/useExtras'
+import { useEnterRoom, useInviteToRoom, useOccupants, usePostRoomMessage, useRoomCode, useRoomInvites, useRoomMessages, type Room } from '@/hooks/useExtras'
 import { useAuthStore } from '@/stores/authStore'
 import { useToastStore } from '@/stores/toastStore'
 import { localParts } from '@/lib/timezones'
@@ -25,6 +25,7 @@ export function RoomConversation({ room }: { room: Room }) {
   const post = usePostRoomMessage()
   const invite = useInviteToRoom()
   const leave = useEnterRoom()
+  const { data: door } = useRoomCode(room.id)
   const showToast = useToastStore((s) => s.showToast)
   const now = useNow(15_000).getTime()
   const zone = settings?.timezone ?? 'Africa/Lagos'
@@ -128,6 +129,11 @@ export function RoomConversation({ room }: { room: Room }) {
 
       <aside aria-label="People" className="hairline-t flex max-h-[440px] min-w-0 flex-col lg:border-l lg:border-t-0 lg:border-line">
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <div className="mb-4 rounded-[10px] bg-surface-sunken p-3">
+            <p className="text-[12px] font-semibold text-text-secondary">Room code</p>
+            <p className="tnum mt-0.5 text-[22px] leading-none font-extrabold tracking-[0.15em] text-text-primary">{door?.code ?? '······'}</p>
+            <p className="mt-1.5 text-[12px] leading-snug text-text-muted">Anyone else needs this or an invite to come in. It changes when the room empties.</p>
+          </div>
           <h3 className="text-[13px] font-bold text-text-primary">In the room ({inside.length})</h3>
           <ul className="mt-2 space-y-1.5">
             {inside.map((uid) => (
@@ -146,7 +152,7 @@ export function RoomConversation({ room }: { room: Room }) {
           </Button>
           {picking ? (
             <ul className="mt-2 space-y-1">
-              <li className="text-[12px] text-text-muted">They get a pop-up in the office and an email.</li>
+              <li className="text-[12px] text-text-muted">They get a pop-up in the office and an email, and need no code.</li>
               {others.map((m) => {
                 const said = answer(m.user_id)
                 return (
@@ -179,7 +185,7 @@ export function RoomConversation({ room }: { room: Room }) {
           ) : null}
         </div>
         <div className="hairline-t p-3">
-          <Button variant="secondary" className="w-full max-sm:h-11" loading={leave.isPending} onClick={() => leave.mutate(null, { onError: (e) => showToast(e.message, 'error') })}>
+          <Button variant="secondary" className="w-full max-sm:h-11" loading={leave.isPending} onClick={() => leave.mutate({ room: null }, { onError: (e) => showToast(e.message, 'error') })}>
             Step out
           </Button>
         </div>

@@ -1,12 +1,12 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
-import { Users } from 'lucide-react'
+import { Lock, Users } from 'lucide-react'
 import { Button, EmptyState, FieldError, Input, Label, Select, Skeleton } from '@/components/ui/primitives'
 import { Photo } from '@/components/ui/Photo'
 import { RoomConversation } from '@/components/office/RoomConversation'
 import { useOfficeMembers, useOfficeSettings } from '@/hooks/useOffice'
 import { useNow } from '@/hooks/useNow'
 import { useToastStore } from '@/stores/toastStore'
-import { useBookRoom, useBookings, useCancelBooking, useEnterRoom, useOccupants, useRooms } from '@/hooks/useExtras'
+import { useBookRoom, useBookings, useCancelBooking, useEnterRoom, useOccupants, useRooms, type EnterAnswer } from '@/hooks/useExtras'
 import { useAuthStore } from '@/stores/authStore'
 import { localParts, wallTimeToInstant } from '@/lib/timezones'
 import { firstName, initials } from '@/lib/utils'
@@ -39,6 +39,32 @@ export function Rooms() {
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
+  // The room whose door is asking for a code.
+  const [asking, setAsking] = useState<string | null>(null)
+  const [code, setCode] = useState('')
+  const [codeProblem, setCodeProblem] = useState<string | null>(null)
+
+  const tryDoor = (roomId: string, given?: string) => {
+    setCodeProblem(null)
+    enter.mutate(
+      { room: roomId, code: given },
+      {
+        onSuccess: (answer) => {
+          const said = answer as EnterAnswer
+          if (said === 'in') {
+            setAsking(null)
+            setCode('')
+          } else {
+            setAsking(roomId)
+            setCode('')
+            if (said === 'wrong_code') setCodeProblem('That code is not right. Check it and try again.')
+            if (said === 'locked') setCodeProblem('Too many wrong tries. Wait 10 minutes, or ask someone inside to invite you.')
+          }
+        },
+        onError: (e) => setCodeProblem(e.message),
+      },
+    )
+  }
 
   const nameOf = (uid: string) => members?.find((m) => m.user_id === uid)?.user?.full_name ?? 'Someone'
   const time = (iso: string) => localParts(zone, new Date(iso)).time
@@ -92,7 +118,7 @@ export function Rooms() {
         <p role="status" className="sr-only">
           {said}
         </p>
-        <p className="mt-1.5 text-[13px] text-text-muted">It is {nowTime} at the office. Book a room, or step into one to join the conversation.</p>
+        <p className="mt-1.5 text-[13px] text-text-muted">It is {nowTime} at the office. Book a room, or step into one. A room in use needs its code or an invite.</p>
       </div>
       <div className="mx-auto max-w-[1100px] space-y-5 p-4 sm:p-6">
         {isLoading ? <Skeleton className="h-44" /> : null}
@@ -141,18 +167,66 @@ export function Rooms() {
                   ))}
                   {!inside.length ? <span className="text-[12px] opacity-70">Nobody inside</span> : null}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => enter.mutate(here ? null : r.id)}
-                  className="press mt-3 h-9 rounded-full border border-[rgba(246,250,247,0.28)] text-[13px] font-semibold hover:bg-[rgba(246,250,247,0.08)] max-sm:h-11"
-                >
-                  {here ? 'Step out' : 'Step in'}
-                </button>
+                {asking === r.id && !here ? (
+                  <form
+                    className="mt-3"
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      if (code.trim()) tryDoor(r.id, code.trim())
+                    }}
+                  >
+                    <label htmlFor={`${id}-code-${r.id}`} className="text-[12px] font-semibold">
+                      Enter the room code
+                    </label>
+                    <div className="mt-1 flex gap-2">
+                      <input
+                        id={`${id}-code-${r.id}`}
+                        autoFocus
+                        value={code}
+                        inputMode="numeric"
+                        autoComplete="off"
+                        maxLength={6}
+                        onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                        aria-describedby={codeProblem ? `${id}-code-err` : undefined}
+                        className="tnum h-9 w-0 min-w-0 flex-1 rounded-full border border-[rgba(246,250,247,0.28)] bg-transparent px-3 text-[14px] tracking-[0.2em] text-ivory max-sm:h-11"
+                      />
+                      <button type="submit" disabled={enter.isPending} className="press h-9 rounded-full bg-gold px-4 text-[13px] font-bold text-ink max-sm:h-11">
+                        Enter
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAsking(null)
+                          setCodeProblem(null)
+                        }}
+                        className="press h-9 rounded-full border border-[rgba(246,250,247,0.28)] px-3 text-[13px] font-semibold max-sm:h-11"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    {codeProblem ? (
+                      <p id={`${id}-code-err`} role="alert" className="mt-1.5 text-[12px] leading-snug text-gold">
+                        {codeProblem}
+                      </p>
+                    ) : null}
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (here) enter.mutate({ room: null })
+                      else tryDoor(r.id)
+                    }}
+                    className="press mt-3 inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-[rgba(246,250,247,0.28)] text-[13px] font-semibold hover:bg-[rgba(246,250,247,0.08)] max-sm:h-11"
+                  >
+                    {!here && inside.length ? <Lock size={13} aria-hidden /> : null}
+                    {here ? 'Step out' : inside.length ? 'Step in with a code' : 'Step in'}
+                  </button>
+                )}
               </section>
             )
           })}
         </div>
-        {enter.error ? <FieldError>{enter.error.message}</FieldError> : null}
         {myRoom && rooms?.find((r) => r.id === myRoom) ? <RoomConversation key={myRoom} room={rooms.find((r) => r.id === myRoom)!} /> : null}
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">

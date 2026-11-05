@@ -113,7 +113,12 @@ export const useBookRoom = () =>
     supabase.rpc('book_room', { p_room: i.room, p_title: i.title, p_start: i.start, p_end: i.end }),
   )
 export const useCancelBooking = () => useCall((id: string) => supabase.rpc('cancel_booking', { p_id: id }))
-export const useEnterRoom = () => useCall((room: string | null) => supabase.rpc('enter_room', { p_room: room }))
+export type EnterAnswer = 'in' | 'out' | 'needs_code' | 'wrong_code' | 'locked'
+export const useEnterRoom = () =>
+  useCall((i: { room: string | null; code?: string }) => supabase.rpc('enter_room', { p_room: i.room, p_code: i.code ?? null }))
+/** Readable only from inside the room (0023). */
+export const useRoomCode = (room: string) =>
+  useExtra<{ code: string } | null>(`room-code-${room}`, () => supabase.from('office_room_codes').select('code').eq('room_id', room).maybeSingle())
 
 /* talking in a room, and asking people in (0022) */
 export interface RoomMessage {
