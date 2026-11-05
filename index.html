@@ -36,9 +36,16 @@
   <body>
     <div id="root">
       <div style="min-height:100dvh;display:flex;align-items:center;justify-content:center;font-family:Nunito,system-ui,sans-serif;color:#59665e">
-        <p role="status">Opening the office…</p>
+        <p role="status" id="opening" style="max-width:30ch;text-align:center;line-height:1.5">Opening the office…</p>
       </div>
     </div>
+    <script>
+      // The first visit downloads the database; from then on it opens at once.
+      setTimeout(function () {
+        var p = document.getElementById('opening');
+        if (p) p.textContent = 'Setting up the office for the first time. This takes up to half a minute, and is instant after that.';
+      }, 4000);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
