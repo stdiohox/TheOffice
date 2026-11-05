@@ -302,6 +302,6 @@ grant execute on function public.office_insights(int) to authenticated;
 insert into public.office_rooms (id, name, capacity, purpose) values
   ('boardroom', 'Boardroom', 12, 'Team meetings and reviews'),
   ('focus', 'Focus room', 4, 'Small working sessions'),
-  ('corner', 'The corner', 2, 'One-to-ones and quiet chats');
+  ('corner', 'Corner room', 2, 'One-to-ones and quiet chats');
 
 commit;

@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import recover from '../../server/auth/recover'
 import officeAlerts from '../../server/cron/office-alerts'
 import knockPing from '../../server/office/knock-ping'
+import roomInvite from '../../server/office/room-invite'
 import taskNotify from '../../server/office/task-notify'
 import invite from '../../server/team/invite'
 
@@ -12,6 +13,7 @@ const ROUTES: Record<string, Handler> = {
   '/api/auth/recover': recover,
   '/api/cron/office-alerts': officeAlerts,
   '/api/office/knock-ping': knockPing,
+  '/api/office/room-invite': roomInvite,
   '/api/office/task-notify': taskNotify,
   '/api/team/invite': invite,
 }

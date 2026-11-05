@@ -82,7 +82,18 @@ export async function bootDemo() {
     }
   })
 
-  useAuthStore.subscribe((s) => claimSeat(s.profile?.id ?? s.user?.id ?? null))
+  // Signing out or becoming someone else leaves the room you were in. A profile that
+  // goes null then back to the same person is a reload of the store, not a departure.
+  let seated: string | null = null
+  useAuthStore.subscribe((s) => {
+    const now = s.profile?.id ?? s.user?.id ?? null
+    claimSeat(now)
+    if (seated && !s.user && now !== seated) {
+      const left = seated
+      void asOwner((tx) => tx.query(`delete from public.office_room_occupants where user_id = $1`, [left]))
+    }
+    if (now !== seated) seated = now
+  })
   helloPresence()
   startSimulation()
 }
@@ -91,10 +102,6 @@ export async function bootDemo() {
 export async function become(person: Person) {
   const store = useAuthStore.getState()
   if (store.profile?.id === person.id) return
-  if (store.profile) {
-    const leaving = store.profile.id
-    await asOwner((tx) => tx.query(`delete from public.office_room_occupants where user_id = $1`, [leaving]))
-  }
   if (store.session) await store.signOut()
   const { error } = await useAuthStore.getState().signIn(person.email, PASSWORD)
   if (error) throw new Error(error)

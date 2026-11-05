@@ -6,7 +6,7 @@ import { useToastStore } from '@/stores/toastStore'
 import { cn } from '@/lib/utils'
 import { become, jumpTo, lagosDay, lagosMinutes, resetDemo, thisFriday } from './control'
 import { AMAKA, BISI, NGOZI, PEOPLE, PERSONAS, type Person } from './people'
-import { giveTask, knockOn } from './sim'
+import { giveTask, inviteMe, knockOn } from './sim'
 
 /**
  * The presenter's controls, floating over the office so the office itself stays
@@ -40,7 +40,7 @@ const TOUR: Stop[] = [
   { title: 'New: Insights', say: 'The month added up for leadership, in plain words, with every figure traceable to the records.', person: NGOZI, route: '/insights' },
   { title: 'New: Notices', say: 'Post something the whole team must read, and see exactly who has. Post one and watch the count climb.', person: NGOZI, route: '/notices' },
   { title: 'New: Time off', say: 'Ask, decide, done. Approval pauses that person’s reports and shows on their door, so nobody enters anything twice.', person: BISI, route: '/time-off' },
-  { title: 'New: Rooms', say: 'Book a room with no double bookings, and step in so the team can see who is in the meeting.', person: AMAKA, route: '/rooms' },
+  { title: 'New: Rooms', say: 'Book a room with no double bookings. Step into the Focus room: you read the conversation so far and join in. Only people inside can read it, not even the CEO, and it is deleted when the last person leaves. Invite a colleague and they get a pop-up and an email.', person: AMAKA, route: '/rooms' },
   { title: 'New: Team chat', say: 'Open channels for the whole team, next to the private knock chats. Post in Wins and someone will answer.', person: AMAKA, route: '/chat' },
   { title: 'The day closes', say: 'Jump to the evening. Anyone who missed a report is flagged, HR gets the summary, and the Email log shows every email that would have gone out.', person: BISI, route: '/email-log', minutes: 1150 },
 ]
@@ -257,6 +257,19 @@ export function DemoPanel() {
               </button>
               <button type="button" disabled={busy} className={chip} onClick={() => void act(async () => showToast(`${await giveTask(profile.id)} gave you a task.`, 'info'))}>
                 A task comes in
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                className={chip}
+                onClick={() =>
+                  void act(async () => {
+                    const { from } = await inviteMe(profile.id)
+                    showToast(`${from} invited you to a room.`, 'info')
+                  })
+                }
+              >
+                A room invite comes in
               </button>
             </div>
           </section>

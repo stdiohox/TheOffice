@@ -26,8 +26,9 @@ The **Demo** pill at the top of the screen opens the presenter's controls. **Shi
 4. As Ngozi, give Zainab a task. Keep talking: within half a minute she has started and finished it. Approve it and give it stars.
 5. Ngozi posts a notice that must be read. Watch the count climb.
 6. Be **Bisi**. Show Reports, then Insights, then approve a time off request.
-7. Move the clock to **19:10**, then open **Email log**: the summary, the alerts, each one as it would arrive.
-8. **Fri 19:10**: the leaderboard closes and everyone gets their week.
+7. In **Rooms**, step into the Focus room as Ngozi and read back the conversation. Say something; Zainab or Dayo answers. Invite Amaka: her window gets a pop-up, Join puts her in the room, and the invite email is in the Email log.
+8. Move the clock to **19:10**, then open **Email log**: the summary, the alerts, each one as it would arrive.
+9. **Fri 19:10**: the leaderboard closes and everyone gets their week.
 
 ## What to say if asked
 
@@ -37,4 +38,5 @@ The **Demo** pill at the top of the screen opens the presenter's controls. **Shi
   with real database rules, and are not yet in a client's live office. Say so.
 - *"Is it watching my staff?"* It records reports, presence inside the office and declared status. Never
   screens, keystrokes, webcams or other apps. Open the staff notice to show it.
-- *Video in Rooms?* Rooms show bookings and who stepped in. There is no video in the demo; a rollout links your meeting tool.
+- *Can managers read room conversations?* No. Only people inside a room can read it, and it is deleted when the last person leaves. Someone who steps in can read back, so people should know that.
+- *Video in Rooms?* Rooms are text conversations, with bookings and invites. There is no video in the demo; a rollout links your meeting tool.

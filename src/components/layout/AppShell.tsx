@@ -12,6 +12,7 @@ import { Toast } from '@/components/ui/Toast'
 import { KnockLayer } from '@/components/office/KnockLayer'
 import { CheckinLayer } from '@/components/office/CheckinLayer'
 import { TaskLayer } from '@/components/office/TaskLayer'
+import { RoomInviteLayer } from '@/components/office/RoomInviteLayer'
 import { OfficePresence } from '@/components/office/OfficePresence'
 import { StatusMenu } from '@/components/office/StatusMenu'
 import { Photo } from '@/components/ui/Photo'
@@ -250,6 +251,7 @@ export function AppShell() {
       <KnockLayer key={profile?.id ?? 'signed-out'} />
       <CheckinLayer key={`checkin-${profile?.id ?? 'signed-out'}`} />
       <TaskLayer key={`tasks-${profile?.id ?? 'signed-out'}`} />
+      <RoomInviteLayer key={`rooms-${profile?.id ?? 'signed-out'}`} />
 
       {toast ? <Toast key={toast.id} message={toast.message} type={toast.type} onClose={hideToast} /> : null}
     </div>

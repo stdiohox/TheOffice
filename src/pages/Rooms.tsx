@@ -1,7 +1,8 @@
-import { useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { Users } from 'lucide-react'
 import { Button, EmptyState, FieldError, Input, Label, Select, Skeleton } from '@/components/ui/primitives'
 import { Photo } from '@/components/ui/Photo'
+import { RoomConversation } from '@/components/office/RoomConversation'
 import { useOfficeMembers, useOfficeSettings } from '@/hooks/useOffice'
 import { useNow } from '@/hooks/useNow'
 import { useToastStore } from '@/stores/toastStore'
@@ -48,6 +49,21 @@ export function Rooms() {
   const now = clockNow.getTime()
   const myRoom = occupants?.find((o) => o.user_id === me)?.room_id ?? null
   const isAdmin = profile?.role === 'manager' || profile?.role === 'hr'
+  const roomName = (rid: string | null) => rooms?.find((r) => r.id === rid)?.name
+  const pageTitle = useRef<HTMLHeadingElement>(null)
+  const wasIn = useRef<string | null>(null)
+  const [said, setSaid] = useState('')
+  useEffect(() => {
+    if (myRoom === wasIn.current) return
+    if (myRoom) setSaid(`You are in the ${roomName(myRoom) ?? 'room'}.`)
+    else {
+      setSaid(`You left the ${roomName(wasIn.current) ?? 'room'}.`)
+      // The button that was pressed has gone with the panel.
+      pageTitle.current?.focus()
+    }
+    wasIn.current = myRoom
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myRoom])
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -72,8 +88,11 @@ export function Rooms() {
   return (
     <div className="office-page">
       <div className="hairline-b sticky top-[var(--app-sticky-top)] z-10 bg-surface/95 px-4 pt-4 pb-3 backdrop-blur-sm sm:px-6">
-        <h1 className="font-display text-[28px] leading-none font-medium text-text-primary">Rooms</h1>
-        <p className="mt-1.5 text-[13px] text-text-muted">It is {nowTime} at the office. Book a room, or step into one.</p>
+        <h1 ref={pageTitle} tabIndex={-1} className="font-display text-[28px] leading-none font-medium text-text-primary outline-none">Rooms</h1>
+        <p role="status" className="sr-only">
+          {said}
+        </p>
+        <p className="mt-1.5 text-[13px] text-text-muted">It is {nowTime} at the office. Book a room, or step into one to join the conversation.</p>
       </div>
       <div className="mx-auto max-w-[1100px] space-y-5 p-4 sm:p-6">
         {isLoading ? <Skeleton className="h-44" /> : null}
@@ -134,6 +153,7 @@ export function Rooms() {
           })}
         </div>
         {enter.error ? <FieldError>{enter.error.message}</FieldError> : null}
+        {myRoom && rooms?.find((r) => r.id === myRoom) ? <RoomConversation key={myRoom} room={rooms.find((r) => r.id === myRoom)!} /> : null}
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
           <section aria-labelledby={`${id}-sched`} className="min-w-0">

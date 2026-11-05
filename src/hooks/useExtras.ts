@@ -115,6 +115,59 @@ export const useBookRoom = () =>
 export const useCancelBooking = () => useCall((id: string) => supabase.rpc('cancel_booking', { p_id: id }))
 export const useEnterRoom = () => useCall((room: string | null) => supabase.rpc('enter_room', { p_room: room }))
 
+/* talking in a room, and asking people in (0022) */
+export interface RoomMessage {
+  id: number
+  room_id: string
+  sender: string
+  body: string
+  created_at: string
+}
+export interface RoomInvite {
+  id: string
+  room_id: string
+  from_user: string
+  to_user: string
+  status: 'pending' | 'accepted' | 'declined'
+  created_at: string
+  expires_at: string
+}
+/** No previous data here: one room's words must never show, even for a moment, in another. */
+export function useRoomMessages(room: string | null) {
+  const signedIn = useAuthStore((s) => !!s.profile)
+  return useQuery({
+    queryKey: [...extrasKeys.all, 'room-messages', room],
+    enabled: signedIn && !!room,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('office_room_messages').select('*').eq('room_id', room!).order('created_at').order('id').limit(300)
+      if (error) throw new Error(error.message)
+      return (data ?? []) as RoomMessage[]
+    },
+  })
+}
+export const usePostRoomMessage = () =>
+  useCall((i: { room_id: string; body: string; sender: string }) => supabase.from('office_room_messages').insert(i))
+export const useRoomInvites = () =>
+  useExtra<RoomInvite[]>('room-invites', () => supabase.from('office_room_invites').select('*').order('created_at', { ascending: false }).limit(100))
+export const useRespondRoomInvite = () =>
+  useCall((i: { id: string; accept: boolean }) => supabase.rpc('respond_room_invite', { p_id: i.id, p_accept: i.accept }))
+/** Invite, then ask the server to email. The email is best effort: the invite stands either way. */
+export const useInviteToRoom = () =>
+  useCall(async (to: string) => {
+    const made = await supabase.rpc('invite_to_room', { p_to: to })
+    if (made.error) return made
+    const { data: session } = await supabase.auth.getSession()
+    const token = session.session?.access_token
+    if (token) {
+      await fetch('/api/office/room-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ inviteId: made.data }),
+      }).catch(() => null)
+    }
+    return made
+  })
+
 /* team chat */
 export type Channel = 'general' | 'wins' | 'help'
 export interface ChannelMessage {

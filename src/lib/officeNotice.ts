@@ -11,7 +11,7 @@
  * the notice changes first.
  */
 /** 2 (0011): tasks. 3 (0012, 0013): stars, images and the weekly leaderboard. 4 (0014): a start before sign-in, if you say one. 5 (0015): tasks you give yourself, and edits to tasks. 6 (0017): Bisi (HR) sees what Ngozi sees. 7 (0019): optional weekend reports, which the leaderboard does not count. */
-export const NOTICE_VERSION = 8
+export const NOTICE_VERSION = 9
 
 export const NOTICE_TITLE = 'How the office records your time'
 
@@ -53,6 +53,7 @@ export const NOTICE: NoticeSection[] = [
       'A task is seen by the person who gave it and the person it was given to; a task you give yourself, by you. The office admins, Ngozi, Bisi and Tunde, see every task, including the ones you give yourself. Tunde sees only tasks: not your reports, your time figures or your notes.',
       'The same people see a task’s stars and the images handed in with it.',
       'Everyone in the office sees team chat, room bookings, who is in a room, who has read a notice, and the dates of approved time off. The type of leave and your note are seen only by you, Ngozi and Bisi.',
+      'What is said in a room is readable only by the people in that room while they are in it, and that includes anyone who steps in later. Managers outside the room cannot read it. It is deleted when the last person leaves. Everyone sees who is in a room; only the two people involved see an invite.',
       'Ngozi and Bisi see Insights: your reports and tasks added up over time. It uses nothing that is not already listed here.',
       'Everyone in the office sees the whole leaderboard. On Friday evening each person is emailed their own week, the top of the table gets a special email, and Ngozi and the admins get the whole table.',
     ],

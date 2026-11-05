@@ -168,6 +168,7 @@ const CHAT = {
 
 const chatted = new Map<string, number>()
 let knocksAnswered = 0
+let invitesAnswered = 0
 
 function onChange(c: Change) {
   const row = (c.new ?? {}) as Record<string, string>
@@ -200,6 +201,23 @@ function onChange(c: Change) {
       })
     }
   }
+  if (c.tbl === 'office_room_invites' && c.op === 'INSERT') {
+    const to = byId(row.to_user)
+    if (to && free(to)) {
+      const accept = ++invitesAnswered % 4 !== 0
+      laterAs(to, 4000 + Math.random() * 3000, async () => {
+        await rpc(to, 'respond_room_invite', { p_id: row.id, p_accept: accept })
+        if (accept) later(2000, () => postInRoom(row.room_id, to, pick(ROOM.arrive)))
+      })
+    }
+  }
+  if (c.tbl === 'office_room_messages' && c.op === 'INSERT' && humansPresent().has(row.sender)) {
+    later(2200 + Math.random() * 2500, async () => {
+      const inside = await occupants(row.room_id)
+      const other = pick(inside.map(byId).filter((p): p is Person => !!p && free(p)))
+      if (other) await postInRoom(row.room_id, other, pick(ROOM.reply))
+    })
+  }
   if (c.tbl === 'office_tasks' && c.op === 'INSERT') {
     const to = byId(row.assigned_to)
     if (to && free(to) && row.assigned_to !== row.assigned_by) {
@@ -228,6 +246,57 @@ function onChange(c: Change) {
   }
 }
 
+const ROOM = {
+  arrive: ['Hi, I am here. What have I missed?', 'Just caught up on the above. How can I help?', 'Thanks for the invite. I have read back.'],
+  reply: ['Good point. I can take that on today.', 'Agreed. Shall we note that as the next step?', 'That makes sense to me.', 'I will check and report back here in a few minutes.', 'Yes, and I can send the details after this.'],
+  chatter: ['I have just checked, and that part looks fine.', 'Can we settle this before the end of the day?', 'I will write up what we agreed.', 'One more thing: who is telling the customer?', 'Good, that is one less thing to worry about.'],
+}
+
+const occupants = (room: string) =>
+  asOwner(async (tx) => (await tx.query<{ user_id: string }>(`select user_id from public.office_room_occupants where room_id = $1`, [room])).rows.map((r) => r.user_id))
+
+function postInRoom(room: string, p: Person, body: string) {
+  return asOwner((tx) => tx.query(`insert into public.office_room_messages (room_id, sender, body) values ($1, $2, $3)`, [room, p.id, body]))
+}
+
+/** Two of the team talking in a room, or a room where they already are. */
+async function aRoomInUse(me: string): Promise<{ room: string; person: Person }> {
+  const rows = await asOwner(async (tx) => (await tx.query<{ user_id: string; room_id: string }>(`select user_id, room_id from public.office_room_occupants`)).rows)
+  // Never the room this person is already in: there would be nothing to invite them to.
+  const mine = rows.find((r) => r.user_id === me)?.room_id
+  const there = rows.filter((r) => r.room_id !== mine).map((r) => ({ room: r.room_id, person: byId(r.user_id) })).find((r) => r.person && free(r.person))
+  if (there?.person) return { room: there.room, person: there.person }
+  const room = mine === 'focus' ? 'boardroom' : 'focus'
+  const [a, b] = PEOPLE.filter((p) => p !== NGOZI && free(p) && !LATE_STARTERS.includes(p) && p.id !== me).sort(() => Math.random() - 0.5)
+  await rpc(a, 'enter_room', { p_room: room })
+  await rpc(b, 'enter_room', { p_room: room })
+  await postInRoom(room, a, 'Shall we go through the plan for next week?')
+  await postInRoom(room, b, 'Yes. I have the numbers here.')
+  return { room, person: a }
+}
+
+/** Someone in a room asks the person in this window to come in, by the same route a person's would. */
+export async function inviteMe(me: string) {
+  const { room, person } = await aRoomInUse(me)
+  const id = await rpc(person, 'invite_to_room', { p_to: me })
+  await fetch('/api/office/room-invite', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${fakeJwt({ sub: person.id, email: person.email, role: 'authenticated' })}` },
+    body: JSON.stringify({ inviteId: id }),
+  })
+  return { from: person.name, room }
+}
+
+/** Whoever is talking in a room carries on, so a person stepping in finds a live conversation. */
+async function aRoomTalks() {
+  const rows = await asOwner(async (tx) => (await tx.query<{ user_id: string; room_id: string }>(`select user_id, room_id from public.office_room_occupants`)).rows)
+  const speakers = rows.filter((r) => rows.filter((x) => x.room_id === r.room_id).length > 1).map((r) => ({ room: r.room_id, person: byId(r.user_id) })).filter((r): r is { room: string; person: Person } => !!r.person && free(r.person))
+  if (!speakers.length) return false
+  const s = pick(speakers)
+  await postInRoom(s.room, s.person, pick(ROOM.chatter))
+  return true
+}
+
 function asOwnerChat(knockId: string, p: Person, body: string) {
   return asOwner((tx) => tx.query(`insert into public.office_chat_messages (knock_id, sender, body) values ($1, $2, $3)`, [knockId, p.id, body]))
 }
@@ -243,11 +312,13 @@ async function somethingHappens() {
   const team = inOffice.map((r) => byId(r.user_id)).filter((p): p is Person => !!p && free(p))
   if (!team.length) return
   const p = pick(team)
-  if (roll < 0.35) {
+  if (roll < 0.3) {
     await rpc(p, 'set_office_status', { p_working_on: pick(WORK[p.beat].doing), p_back_at: null, p_out_until: null })
-  } else if (roll < 0.6) {
+  } else if (roll < 0.5) {
     const ch = pick(['general', 'wins', 'help'] as const)
     await post(ch, p, pick(CHAT.channel[ch]))
+  } else if (roll < 0.75) {
+    if (!(await aRoomTalks())) await moveATask(team)
   } else {
     await moveATask(team)
   }
