@@ -1,0 +1,283 @@
+import { useEffect, useId, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
+import { OfficeScene, RisingWords } from '@/components/auth/OfficeScene'
+import { useAuthStore } from '@/stores/authStore'
+import { Button, FieldError, Input, Label } from '@/components/ui/primitives'
+import { PASSWORD, PERSONAS } from '@/demo/people'
+
+/** Demo only: one press to be anyone. Every sample login uses the same password. */
+function DemoAccounts({ onPick }: { onPick: (email: string) => void }) {
+  return (
+    <section aria-label="Sample accounts" className="hairline mt-6 rounded-[14px] bg-surface-raised p-3">
+      <h2 className="text-[13px] font-bold text-text-primary">Try it as</h2>
+      <ul className="mt-1.5 space-y-1">
+        {PERSONAS.map(({ person, blurb }) => (
+          <li key={person.id}>
+            <button type="button" onClick={() => onPick(person.email)} className="press w-full rounded-[10px] px-2.5 py-1.5 text-left transition-colors duration-150 hover:bg-[var(--hover)]">
+              <span className="block text-[13px] font-semibold text-text-primary">{person.name}</span>
+              <span className="block text-[12px] text-text-muted">{blurb}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 px-2.5 text-[11px] text-text-muted">Sample company, sample people. Password for any account: {PASSWORD}</p>
+    </section>
+  )
+}
+
+/**
+ * Sign in with email and password. Nobody signs up here: Ngozi invites each
+ * person, and the invite email carries the link to set a password. "Forgot
+ * your password?" sends a fresh link to an email on the team (api/auth/recover),
+ * and says the same thing whether or not the email is known.
+ */
+
+/**
+ * The frame for the sign-in, forgot and set-password screens: a dark brand
+ * panel with a small picture of the office coming to life (OfficeScene), and
+ * the form beside it. On a phone the panel shrinks to a strip of three rooms
+ * above the form.
+ */
+export function AuthFrame({ title, subtitle, children, headingId }: { title: string; subtitle: string; children: ReactNode; headingId?: string }) {
+  return (
+    <div className="grid min-h-[100dvh] bg-surface md:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+      <div
+        aria-label="About BRIGHTWORK Office"
+        role="region"
+        className="on-dark relative isolate hidden flex-col overflow-hidden bg-[var(--sidebar-bg)] px-10 py-9 text-white md:flex lg:px-14 lg:py-12"
+      >
+        <span className="relative flex items-center gap-2.5">
+          {/* TODO: swap for final vector/SVG logo when client delivers it */}
+          <img src="/mark.svg" alt="" width={36} height={36} className="size-9 rounded-[10px] object-contain" />
+          <span className="text-[17px] font-extrabold tracking-[0.02em]">
+            BRIGHTWORK <span className="font-semibold opacity-80">Office</span>
+          </span>
+        </span>
+        <div className="relative my-auto w-full max-w-[500px] self-center py-10">
+          <OfficeScene />
+        </div>
+        <div className="relative max-w-[460px]">
+          <p className="text-[40px] leading-[1.08] font-extrabold tracking-[-0.02em] text-balance lg:text-[46px]">
+            <RisingWords text="The team, in one office." />
+          </p>
+          <p className="reveal mt-4 max-w-[38ch] text-[16px] leading-relaxed text-pretty text-[var(--on-dark-muted)]" style={{ '--i': 10 } as CSSProperties}>
+            See who is in, knock on a door, and file the day’s three reports.
+          </p>
+        </div>
+        {/* Soft glows in the brand's green, blue and gold, behind everything (-z-10
+            inside the isolated panel, so they never tint the text). Soft gradients,
+            not filter blur: same look, far cheaper to move. Green and blue drift
+            into place once; the faint gold one stays still. */}
+        <span
+          aria-hidden
+          className="scene-drift pointer-events-none absolute -right-72 -bottom-72 -z-10 size-[680px] bg-[radial-gradient(closest-side,rgba(0,166,82,0.26),transparent)]"
+        />
+        <span
+          aria-hidden
+          className="scene-drift-alt pointer-events-none absolute -top-16 -right-40 -z-10 size-[440px] bg-[radial-gradient(closest-side,rgba(0,173,239,0.16),transparent)]"
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute top-1/4 -left-64 -z-10 size-[520px] bg-[radial-gradient(closest-side,rgba(255,217,102,0.07),transparent)]"
+        />
+      </div>
+      <main className="flex items-center justify-center px-5 py-10 sm:py-12">
+        <div className="w-full max-w-[380px]">
+          <div className="mb-8 md:hidden">
+            <span className="flex items-center gap-2">
+              {/* TODO: swap for final vector/SVG logo when client delivers it */}
+              <img src="/mark.svg" alt="" width={32} height={32} className="size-8 rounded-[8px] object-contain" />
+              <span className="text-[16px] font-extrabold text-text-primary">
+                BRIGHTWORK <span className="font-semibold text-text-secondary">Office</span>
+              </span>
+            </span>
+            <div className="mt-5 rounded-[22px] bg-[var(--sidebar-bg)] p-2.5">
+              <OfficeScene compact />
+            </div>
+          </div>
+          <h1
+            id={headingId}
+            tabIndex={-1}
+            className="reveal font-display text-[30px] leading-tight font-extrabold tracking-[-0.01em] text-text-primary outline-none"
+            style={{ '--i': 1 } as CSSProperties}
+          >
+            {title}
+          </h1>
+          <p className="reveal mt-1.5 text-[15px] text-text-secondary" style={{ '--i': 2 } as CSSProperties}>
+            {subtitle}
+          </p>
+          <div className="reveal mt-7" style={{ '--i': 3 } as CSSProperties}>
+            {children}
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+export function Login() {
+  const id = useId()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { signIn, loading, session, profile, initialized } = useAuthStore()
+  // Back to where they were going, if a guard sent them here.
+  const from = (location.state as { from?: string } | null)?.from
+  const target = from && from.startsWith('/') && !from.startsWith('//') && from !== '/login' ? from : '/office'
+  const [mode, setMode] = useState<'signin' | 'forgot'>('signin')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [problem, setProblem] = useState<string | null>(null)
+  const [sent, setSent] = useState(false)
+  const [sending, setSending] = useState(false)
+
+  // Each view's heading takes focus when the view changes: the button that
+  // was pressed is gone, and focus must not fall to <body>.
+  const headingId = `${id}-h`
+  const [moved, setMoved] = useState(false)
+  useEffect(() => {
+    if (moved) document.getElementById(headingId)?.focus()
+  }, [mode, sent, moved, headingId])
+  const go = (next: 'signin' | 'forgot') => {
+    setMoved(true)
+    setMode(next)
+    setSent(false)
+    setProblem(null)
+  }
+
+  // Only with a profile: signIn() is still checking one while the session lands.
+  if (initialized && session && profile) return <Navigate to={target} replace />
+
+  const onSignIn = async (e: FormEvent) => {
+    e.preventDefault()
+    if (loading) return
+    if (!email.trim() || !password) return setProblem('Enter your email and password.')
+    setProblem(null)
+    // signIn resolves with { error }; it does not throw.
+    const { error } = await signIn(email, password)
+    if (error) return setProblem(error)
+    navigate(target, { replace: true })
+  }
+
+  const onForgot = async (e: FormEvent) => {
+    e.preventDefault()
+    if (sending) return
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setProblem('Enter the email you sign in with.')
+    setProblem(null)
+    setSending(true)
+    const res = await fetch('/api/auth/recover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    }).catch(() => null)
+    setSending(false)
+    if (!res) return setProblem('Cannot reach the server. Check your connection and try again.')
+    if (res.status === 429) return setProblem('A link went out a moment ago. Check your inbox, or try again in an hour.')
+    if (!res.ok) return setProblem('That did not go through. Try again in a moment.')
+    setMoved(true)
+    setSent(true)
+  }
+
+  // Always mounted, so screen readers announce the change when it is filled.
+  const status = (
+    <p role="status" aria-live="polite" className="sr-only">
+      {sent ? `If ${email.trim()} is on the team, a link to set a new password is on its way.` : ''}
+    </p>
+  )
+
+  if (mode === 'forgot') {
+    return (
+      <AuthFrame headingId={headingId} title={sent ? 'Check your inbox' : 'Set a new password'} subtitle="We email a link to the address you sign in with.">
+        {status}
+        {sent ? (
+          <div className="space-y-4">
+            <p className="rounded-[14px] bg-tint-brand px-4 py-3 text-[14px] text-text-primary">
+              If {email.trim()} is on the team, a link to set a new password is on its way. It works for one hour.
+            </p>
+            <Button variant="secondary" className="h-11 w-full" onClick={() => go('signin')}>
+              Back to sign in
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={onForgot} className="space-y-4" noValidate>
+            <div>
+              <Label htmlFor={`${id}-email`}>Email</Label>
+              <Input
+                id={`${id}-email`}
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                invalid={!!problem}
+                aria-describedby={problem ? `${id}-err` : undefined}
+                className="h-11"
+              />
+            </div>
+            <div id={`${id}-err`}>
+              <FieldError>{problem}</FieldError>
+            </div>
+            <Button type="submit" aria-disabled={sending || undefined} aria-busy={sending || undefined} className="h-12 w-full text-[15px]">
+              {sending ? 'Sending…' : 'Email me a link'}
+            </Button>
+            <button
+              type="button"
+              onClick={() => go('signin')}
+              className="press block min-h-11 w-full text-center text-[13px] text-text-secondary underline underline-offset-2 hover:text-text-primary"
+            >
+              Back to sign in
+            </button>
+          </form>
+        )}
+      </AuthFrame>
+    )
+  }
+
+  return (
+    <AuthFrame headingId={headingId} title="Welcome back" subtitle="Sign in to the Brightwork office.">
+      <form onSubmit={onSignIn} className="space-y-4" noValidate>
+        <div>
+          <Label htmlFor={`${id}-email`}>Email</Label>
+          <Input
+            id={`${id}-email`}
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            invalid={!!problem}
+            aria-describedby={problem ? `${id}-err` : undefined}
+            className="h-11"
+          />
+        </div>
+        <div>
+          <Label htmlFor={`${id}-password`}>Password</Label>
+          <Input
+            id={`${id}-password`}
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            invalid={!!problem}
+            aria-describedby={problem ? `${id}-err` : undefined}
+            className="h-11"
+          />
+        </div>
+        <div id={`${id}-err`}>
+          <FieldError>{problem}</FieldError>
+        </div>
+        <Button type="submit" aria-disabled={loading || undefined} aria-busy={loading || undefined} className="group h-12 w-full text-[15px]">
+          {loading ? 'Signing in…' : 'Sign in'}
+          {loading ? null : <ArrowRight size={17} strokeWidth={2} aria-hidden className="cta-arrow" />}
+        </Button>
+        <button
+          type="button"
+          onClick={() => go('forgot')}
+          className="press block min-h-11 w-full text-center text-[13px] text-text-secondary underline underline-offset-2 hover:text-text-primary"
+        >
+          Forgot your password?
+        </button>
+        <p className="text-center text-[12px] text-text-muted">New to the team? Ngozi sends you an invite by email.</p>
+      </form>
+      <DemoAccounts onPick={(email) => { setEmail(email); void useAuthStore.getState().signIn(email, PASSWORD) }} />
+    </AuthFrame>
+  )
+}

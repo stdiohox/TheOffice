@@ -1,0 +1,1 @@
+export { bootDemo } from './control'
