@@ -1,5 +1,5 @@
 // Pictures of a room door: refused, then let in.
-import { open, BASE, SHOTS } from './lib.mjs'
+import { open, finish, BASE, SHOTS } from './lib.mjs'
 const { browser, page } = await open()
 await page.goto(BASE); await page.getByRole('heading', { name: 'Welcome back' }).waitFor({ timeout: 120000 })
 await page.getByRole('button', { name: /Ngozi/ }).first().click(); await page.getByText('Your desk').first().waitFor({ timeout: 20000 })
@@ -13,4 +13,4 @@ await d.getByLabel('Enter the room code').fill('482913'); await d.getByRole('but
 await page.getByRole('heading', { name: 'You are in the Focus room' }).waitFor({ timeout: 6000 }); await page.waitForTimeout(1200)
 await page.screenshot({ path: SHOTS + 'door-in.png' })
 console.log('ok')
-await browser.close()
+await finish(browser)

@@ -1,6 +1,6 @@
 // The whole presentation, in real browser windows. `npm run dev -- --port 5199`, then
 // `node scripts/demo/e2e/walkthrough.mjs`. Set BASE to test a deployment.
-import { open, BASE, SHOTS, openPanel, closePanel, panel } from './lib.mjs'
+import { open, finish, BASE, SHOTS, openPanel, closePanel, panel } from './lib.mjs'
 const { browser, ctx, page, errors, watch } = await open()
 let fails = 0
 const ok = (name, pass, extra = '') => { if (!pass) fails++; console.log(pass ? 'PASS' : 'FAIL', name, extra) }
@@ -368,5 +368,4 @@ await step('reset brings the story back in every window', second, async () => {
 const real = errors.filter((e) => !/Failed to load resource: the server responded with a status of 40[0-9]|GoTrueClient|office heartbeat/.test(e))
 console.log('\nconsole problems:', real.length); console.log([...new Set(real)].slice(0, 12).map((x) => x.slice(0, 260)).join('\n'))
 console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED')
-await browser.close()
-process.exit(fails ? 1 : 0)
+await finish(browser, fails)

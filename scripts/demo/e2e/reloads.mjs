@@ -1,5 +1,5 @@
 // Reload and close windows while the database is busy: each must come back in seconds.
-import { open, BASE, SHOTS } from './lib.mjs'
+import { open, finish, BASE, SHOTS } from './lib.mjs'
 const { browser, ctx, page, errors, watch } = await open()
 const office = (p) => p.getByRole('heading', { name: 'The office', exact: true })
 const login = async (p, who) => { await p.getByRole('heading', { name: 'Welcome back' }).waitFor({ timeout: 90000 }); await p.getByRole('button', { name: who }).first().click(); await office(p).waitFor({ timeout: 20000 }) }
@@ -21,4 +21,4 @@ await reload(t2, 'last window alone')
 const real = errors.filter((e) => !/40[0-9]|GoTrueClient|office heartbeat/.test(e))
 console.log('console problems:', [...new Set(real)].slice(0, 6).join('\n') || 'none')
 console.log(fails ? `${fails} FAILED` : 'ALL PASSED')
-await browser.close(); process.exit(fails ? 1 : 0)
+await finish(browser, fails)

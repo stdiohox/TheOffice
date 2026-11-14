@@ -1,5 +1,5 @@
 // Every screen at phone width: nothing wider than the screen.
-import { open, BASE, SHOTS, openPanel, closePanel } from './lib.mjs'
+import { open, finish, BASE, SHOTS, openPanel, closePanel } from './lib.mjs'
 const { browser, page } = await open({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true })
 let fails = 0
 await page.goto(BASE); await page.getByRole('heading', { name: 'Welcome back' }).waitFor({ timeout: 120000 })
@@ -16,4 +16,4 @@ await page.goto(BASE + '/office'); await page.waitForTimeout(1500)
 await page.getByRole('button', { name: /^More/ }).click(); await page.waitForTimeout(300); await page.screenshot({ path: SHOTS + 'm-more.png' }); await page.getByRole('button', { name: /^More/ }).click()
 await openPanel(page); await page.waitForTimeout(300); await page.screenshot({ path: SHOTS + 'm-panel.png' }); await closePanel(page)
 console.log(fails ? `${fails} FAILED` : 'ALL PASSED')
-await browser.close(); process.exit(fails ? 1 : 0)
+await finish(browser, fails)
